@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%232b59c3%22/%3E%3C/svg%3E">
 <title>AgentMeter · Test your AI agent before it ships</title>
 <meta name="description" content="Free, open-source AI agent evaluation: task success, tool-use accuracy, policy violations, cost per success and latency, with a Ship / Hold / Block release gate for CI. Runs in your browser. By Olga Arkadieva.">
 <link rel="canonical" href="https://olgarkadieva-byte.github.io/agentmeter/">
@@ -98,7 +99,8 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:.9rem}
 .ok-key{width:12px;height:12px;border-radius:50%;background:var(--ship)}.bad-key{width:12px;height:12px;border-radius:50%;background:var(--block);margin-left:14px}
 .scroll{overflow-x:auto}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:0 24px}
-.controls{margin-top:22px;color:var(--muted)}
+.gatehead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:12px;margin-top:28px}.gatehead .h3{margin:0}.gatehead label{color:var(--muted);font-size:.93rem}
+.gatehead + .cards{margin-top:12px}
 select,input[type=number]{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg)}
 input[type=number]{width:5.5em}
 .settings{display:flex;flex-wrap:wrap;gap:18px;margin-top:16px;color:var(--muted);font-size:.93rem}

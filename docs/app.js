@@ -318,7 +318,7 @@ function render() {
   $("results").innerHTML = `
   <h2>${esc(suite.name || "Your task suite")}</h2>
   <p class="sub">${source} · ${suite.tasks.size} tasks · ${scores.length} version${scores.length !== 1 ? "s" : ""} · ${runs.length.toLocaleString("en-US")} runs${policy ? "" : " · <b>no policy file, so tool calls were not checked against permissions</b>"}</p>
-  ${gates.length ? `<h3 class="h3">Release gate against <b>${esc(base)}</b></h3>
+  ${gates.length ? `<div class="gatehead"><h3 class="h3">Release gate</h3><label>Compare against <select id="baseline-view">${opts}</select></label></div>
   <div class="cards">${gates.map(g => `<div class="card"><h4>${esc(g.candidate)} <span class="badge ${g.verdict}">${LABEL[g.verdict]}</span></h4>
     <div class="kpis"><div><b>${pts(g.success_diff.estimate)}</b><span>success, points</span><em>range ${pts(g.success_diff.low)} to ${pts(g.success_diff.high)}</em></div>
     <div><b>${g.candidate_violations}</b><span>policy violations</span></div>
@@ -337,9 +337,10 @@ function render() {
     ${fails.length ? `<div><h3 class="h3">Why runs failed</h3><div class="scroll"><table><thead><tr><th>Failure</th>${heads}</tr></thead><tbody>
     ${fails.map(f => `<tr><td>${esc(f)}</td>${scores.map(s => `<td class="num">${s.failures[f] || 0}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>` : ""}
   </div>
-  <div class="controls"><label>Compare against <select id="baseline-view">${opts}</select></label></div>`;
+  `;
   $("baseline").innerHTML = opts;
-  $("baseline-view").addEventListener("change", e => { $("baseline").value = e.target.value; render(); });
+  const bv = $("baseline-view");
+  if (bv) bv.addEventListener("change", e => { $("baseline").value = e.target.value; render(); });
 }
 
 function showError(e) {
