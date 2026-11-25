@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -78,6 +79,7 @@ def main(argv=None) -> int:
     p = sub.add_parser("audit", help="every tool call with its policy decision")
     _add_inputs(p)
     p.add_argument("--csv", metavar="FILE", help="write the full audit log to a CSV file")
+    p.add_argument("--limit", type=int, default=20, metavar="N", help="violations to list on screen (default 20)")
 
     p = sub.add_parser("demo", help="run the synthetic demo agent and write sample data")
     p.add_argument("out_dir", nargs="?", default="data")
@@ -86,6 +88,13 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     try:
         return _run(a)
+    except BrokenPipeError:
+        # output piped into a command that stopped reading early (e.g. | head)
+        try:
+            sys.stdout = open(os.devnull, "w")
+        except OSError:
+            pass
+        return 0
     except FileNotFoundError as e:
         print(f"error: file not found: {e.filename or e}", file=sys.stderr)
         return 2
@@ -99,7 +108,7 @@ def _run(a) -> int:
         from .demo import generate
         info = generate(a.out_dir, a.seed)
         print(f"Wrote {info['runs']:,} runs of {info['versions']} agent versions on {info['tasks']} tasks to "
-              f"{a.out_dir}/ (runs.jsonl, tasks.json, policy.json).")
+              f"{Path(a.out_dir)}/ (runs.jsonl, tasks.json, policy.json).")
         return 0
 
     runs, suite, policy = load(a.path, a.tasks, a.policy)
@@ -113,9 +122,11 @@ def _run(a) -> int:
               ", ".join(f"{n:,} {k}{'s' if k == 'violation' and n != 1 else ''}" for k, n in counts.items()))
         if policy is None:
             print("No policy.json given, so calls were not checked.")
-        for x in entries:
-            if x.decision == "violation":
-                print(f"VIOLATION  {x.run_id} step {x.step}: {x.reason}")
+        violations = [x for x in entries if x.decision == "violation"]
+        for x in violations[:a.limit]:
+            print(f"VIOLATION  {x.run_id} step {x.step}: {x.reason}")
+        if len(violations) > a.limit:
+            print(f"... and {len(violations) - a.limit:,} more" + ("" if a.csv else " (use --csv to save them all)"))
         if a.csv:
             with open(a.csv, "w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f)

@@ -296,3 +296,9 @@ def test_example_agent_runs_and_scores(tmp_path, monkeypatch, capsys):
     finally:
         out.unlink()
         out.parent.rmdir()
+
+
+def test_audit_lists_a_limited_number_of_violations(capsys):
+    assert main(["audit", str(DATA), "--limit", "5"]) == 0
+    out = capsys.readouterr().out
+    assert out.count("VIOLATION") == 5 and "... and 26 more (use --csv to save them all)" in out
