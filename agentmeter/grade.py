@@ -24,7 +24,8 @@ FAIL_AGENT_ERROR = "agent error"
 FAIL_FORBIDDEN = "forbidden tool called"
 FAIL_MISSING = "required tool not called"
 FAIL_ANSWER = "wrong or incomplete answer"
-FAILURE_ORDER = (FAIL_AGENT_ERROR, FAIL_FORBIDDEN, FAIL_MISSING, FAIL_ANSWER)
+FAIL_JUDGE = "failed the judge's rubric"
+FAILURE_ORDER = (FAIL_AGENT_ERROR, FAIL_FORBIDDEN, FAIL_MISSING, FAIL_ANSWER, FAIL_JUDGE)
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,7 @@ class RunGrade:
     violations: tuple[str, ...]
     tool_calls: int
     tool_errors: int
+    unjudged: bool = False  # the task has a rubric but no judge verdict was recorded
 
 
 def grade_run(run: Run, suite: Suite, policy: Policy | None) -> RunGrade:
@@ -67,15 +69,18 @@ def grade_run(run: Run, suite: Suite, policy: Policy | None) -> RunGrade:
         failure = FAIL_MISSING
     elif not answer_ok:
         failure = FAIL_ANSWER
+    elif exp.rubric and run.judge_pass is False:
+        failure = FAIL_JUDGE
     else:
         failure = None
     violations = []
     for s in run.steps:
-        d = check_step(policy, s)
+        d = check_step(policy, s, run.agent_id)
         if d.kind == VIOLATION:
             violations.append(d.reason)
     return RunGrade(run, failure is None, failure, tools_ok, tuple(violations),
-                    len(executed), sum(1 for s in executed if not s.ok))
+                    len(executed), sum(1 for s in executed if not s.ok),
+                    bool(exp.rubric) and run.judge_pass is None)
 
 
 def _mean(xs):
@@ -117,6 +122,7 @@ class VersionScore:
     violation_run_share: float
     violation_examples: list
     blocked_calls: int
+    unjudged_runs: int
     cost_per_run: float
     cost_per_success: float | None
     total_cost: float
@@ -192,6 +198,7 @@ def score_version(version: str, grades: list[RunGrade], suite: Suite) -> Version
         violation_run_share=sum(1 for g in gs if g.violations) / len(gs),
         violation_examples=examples,
         blocked_calls=sum(1 for g in gs for st in g.run.steps if st.blocked),
+        unjudged_runs=sum(1 for g in gs if g.unjudged),
         cost_per_run=total_cost / len(gs),
         cost_per_success=(total_cost / successes) if successes else None,
         total_cost=total_cost,
@@ -281,6 +288,9 @@ def gate(base: VersionScore, cand: VersionScore, t: Thresholds = Thresholds()) -
     elif cost_change is not None and cost_change > t.max_cost_increase:
         hold.append(f"Cost per successful run is up {cost_change * 100:.0f}% (${base.cost_per_success:.4f} to "
                     f"${cand.cost_per_success:.4f}), over the {t.max_cost_increase * 100:g}% budget.")
+    if cand.unjudged_runs:
+        hold.append(f"{cand.unjudged_runs} run{'s' if cand.unjudged_runs != 1 else ''} with a rubric "
+                    f"{'have' if cand.unjudged_runs != 1 else 'has'} no judge verdict yet; run agentmeter judge first.")
     if latency_change is not None and latency_change > t.max_latency_increase:
         hold.append(f"p95 latency is up {latency_change * 100:.0f}% ({base.latency_p95:.1f}s to "
                     f"{cand.latency_p95:.1f}s), over the {t.max_latency_increase * 100:g}% budget.")

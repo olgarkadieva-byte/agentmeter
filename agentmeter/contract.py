@@ -25,6 +25,7 @@ class Step:
     ok: bool = True
     approved_by: str | None = None
     blocked: bool = False  # stopped by a runtime guard before it ran
+    result: object = None  # what the tool returned, kept for replay (optional)
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,9 @@ class Run:
     tokens_in: int = 0
     tokens_out: int = 0
     error: str | None = None
+    agent_id: str | None = None      # which agent identity ran it, for per-agent permissions
+    judge_pass: bool | None = None   # verdict of a judge on the task's rubric, if any
+    judge_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,7 @@ class Expect:
     output_excludes: tuple[str, ...] = ()
     tools_required: tuple[str, ...] = ()
     tools_forbidden: tuple[str, ...] = ()
+    rubric: str = ""  # open-ended criteria for a judge (a person or a model)
 
 
 @dataclass(frozen=True)
@@ -74,6 +79,7 @@ class ToolRule:
 @dataclass(frozen=True)
 class Policy:
     tools: dict  # tool name -> ToolRule
+    agents: dict | None = None  # agent id -> tuple of tool names that agent may use
 
 
 # ---------- helpers ----------
@@ -125,11 +131,15 @@ def parse_suite(text: str, name: str = "tasks.json") -> Suite:
         exp = t.get("expect", {})
         if not isinstance(exp, dict):
             raise ContractError(f"{where}: 'expect' must be an object")
+        rubric = exp.get("rubric", "")
+        if not isinstance(rubric, str):
+            raise ContractError(f"{where}: 'rubric' must be a string")
         expect = Expect(
             output_contains=_str_list(exp, "output_contains", where),
             output_excludes=_str_list(exp, "output_excludes", where),
             tools_required=_str_list(exp, "tools_required", where),
             tools_forbidden=_str_list(exp, "tools_forbidden", where),
+            rubric=rubric,
         )
         cat = t.get("category", "general")
         prompt = t.get("prompt", "")
@@ -157,7 +167,17 @@ def parse_policy(text: str, name: str = "policy.json") -> Policy:
         if not isinstance(allowed, bool):
             raise ContractError(f"{where}: 'allowed' must be true or false")
         rules[tool] = ToolRule(allowed, _num_map(r, "max", where), _num_map(r, "approval_above", where))
-    return Policy(rules)
+    agents = None
+    if "agents" in data:
+        if not isinstance(data["agents"], dict):
+            raise ContractError(f"{name}: 'agents' must be an object")
+        agents = {}
+        for aid, a in data["agents"].items():
+            where = f"{name}, agent '{aid}'"
+            if not isinstance(a, dict):
+                raise ContractError(f"{where}: must be an object")
+            agents[aid] = _str_list(a, "tools", where)
+    return Policy(rules, agents)
 
 
 # ---------- runs.jsonl ----------
@@ -180,7 +200,7 @@ def _parse_step(s, where) -> Step:
     approved = s.get("approved_by")
     if approved is not None and not isinstance(approved, str):
         raise ContractError(f"{where}: 'approved_by' must be a string or null")
-    return Step(tool, args, ok, approved or None, blocked)
+    return Step(tool, args, ok, approved or None, blocked, s.get("result"))
 
 
 def parse_runs(text: str, suite: Suite, name: str = "runs.jsonl") -> list[Run]:
@@ -226,9 +246,17 @@ def parse_runs(text: str, suite: Suite, name: str = "runs.jsonl") -> list[Run]:
         err = r.get("error")
         if err is not None and not isinstance(err, str):
             raise ContractError(f"{where}: 'error' must be a string or null")
+        aid, jp, jr = r.get("agent_id"), r.get("judge_pass"), r.get("judge_reason")
+        if aid is not None and (not isinstance(aid, str) or not aid):
+            raise ContractError(f"{where}: 'agent_id' must be a non-empty string or null")
+        if jp is not None and not isinstance(jp, bool):
+            raise ContractError(f"{where}: 'judge_pass' must be true, false or null")
+        if jr is not None and not isinstance(jr, str):
+            raise ContractError(f"{where}: 'judge_reason' must be a string or null")
         runs.append(Run(r["run_id"], r["agent_version"], r["task_id"], trial,
                         tuple(_parse_step(s, where) for s in steps),
-                        output, float(r["cost_usd"]), float(r["latency_s"]), tin, tout, err or None))
+                        output, float(r["cost_usd"]), float(r["latency_s"]), tin, tout, err or None,
+                        aid, jp, jr))
     if unknown:
         tid, ln = next(iter(unknown.items()))
         more = f" and {len(unknown) - 1} more" if len(unknown) > 1 else ""

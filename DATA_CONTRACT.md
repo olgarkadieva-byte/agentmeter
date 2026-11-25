@@ -35,6 +35,7 @@ What a correct run must do. Write it once, and run every agent version against i
 | `expect.output_excludes` | no | Phrases the final answer must not contain |
 | `expect.tools_required` | no | Tools that must run successfully at least once |
 | `expect.tools_forbidden` | no | Tools that must not run |
+| `expect.rubric` | no | Open-ended criteria for a judge (`agentmeter judge`, or a person). Runs of this task need a `judge_pass` verdict; until then the gate holds. |
 
 ## `policy.json`: permissions (optional)
 
@@ -46,7 +47,8 @@ Which tools the agent may call, and under what conditions. Without a policy, too
     "lookup_order":      {"allowed": true},
     "issue_refund":      {"allowed": true, "max": {"amount": 500}, "approval_above": {"amount": 100}},
     "escalate_to_human": {"allowed": true}
-  }
+  },
+  "agents": {"support-agent": {"tools": ["lookup_order", "issue_refund", "escalate_to_human"]}}
 }
 ```
 
@@ -56,6 +58,7 @@ Which tools the agent may call, and under what conditions. Without a policy, too
 | `allowed` | `false` lists a tool that must never be called (default `true`) |
 | `max` | Hard limits on numeric arguments. Above the limit is a violation, even with approval. |
 | `approval_above` | Above this value, the call needs `approved_by` in the run; without it, it's a violation. |
+| `agents.<id>.tools` | Optional agent identities: the tools each agent id may use. When `agents` is present, a run's `agent_id` must be listed, and calls to tools outside its list are violations. |
 
 The same rules run at runtime through `agentmeter.Guard`, to stop a call before it happens.
 
@@ -64,11 +67,13 @@ The same rules run at runtime through `agentmeter.Guard`, to stop a call before 
 One JSON object per line. A run is one attempt by one agent version at one task. Run each task several times (`trial` 1, 2, 3, ...) to measure reliability. Use `agentmeter.Recorder` to write these lines for you.
 
 ```json
-{"run_id": "v1.2-L02-1", "agent_version": "v1.2", "task_id": "L02", "trial": 1,
+{"run_id": "v1.2-L02-1", "agent_version": "v1.2", "task_id": "L02", "trial": 1, "agent_id": "support-agent",
  "steps": [
-   {"tool": "lookup_order", "args": {"order_id": "A1032"}, "ok": true},
+   {"tool": "lookup_order", "args": {"order_id": "A1032"}, "ok": true,
+    "result": {"status": "delivered", "price": 207.69, "damaged": true}},
    {"tool": "issue_refund", "args": {"order_id": "A1032", "amount": 207.69}, "ok": false, "blocked": true},
-   {"tool": "escalate_to_human", "args": {"order_id": "A1032", "reason": "refund of $207.69 needs approval"}, "ok": true}
+   {"tool": "escalate_to_human", "args": {"order_id": "A1032", "reason": "refund of $207.69 needs approval"}, "ok": true,
+    "result": {"status": "done"}}
  ],
  "output": "I've passed this to a specialist, who will approve your $207.69 refund within 24 hours.",
  "tokens_in": 3815, "tokens_out": 247, "cost_usd": 0.01515, "latency_s": 5.98}
@@ -88,6 +93,8 @@ One JSON object per line. A run is one attempt by one agent version at one task.
 | `latency_s` | yes | Wall-clock seconds from request to final answer, 0 or more |
 | `tokens_in`, `tokens_out` | no | Whole numbers, for reporting |
 | `error` | no | Set when the agent crashed or timed out; the run counts as failed |
+| `agent_id` | no | The agent identity that ran it, checked against `policy.agents` |
+| `judge_pass`, `judge_reason` | no | Verdict on the task's rubric, written by `agentmeter judge` or by a person |
 
 Each step:
 
@@ -98,6 +105,7 @@ Each step:
 | `ok` | no | `false` if the call failed (default `true`) |
 | `approved_by` | no | Who approved the call, when the policy requires approval |
 | `blocked` | no | `true` if a runtime guard stopped the call, so it never ran (default `false`) |
+| `result` | no | What the tool returned. Kept so the run can be replayed against the same tool outputs. |
 
 ## Why the data is shaped this way
 

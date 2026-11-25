@@ -2,7 +2,9 @@
 
 Everything here is synthetic. The "agent" is a seeded simulation, not a language model, so the
 demo runs offline, costs nothing and gives the same numbers every time. It exercises the same
-pieces you would use with a real agent: tool definitions, the runtime Guard and the Recorder.
+pieces you would use with a real agent: tool definitions, the runtime Guard, the Recorder, an
+agent identity scoped by the policy, and judge verdicts on an open-ended rubric (simulated here).
+To run a real model against the same tasks, see examples/run_real_agent.py.
 
 Four versions of the agent are run against 60 tasks, 8 times each:
   v1.0          the current production agent
@@ -27,13 +29,18 @@ PRICE_IN = 3.00 / 1_000_000    # example price per input token, USD
 PRICE_OUT = 15.00 / 1_000_000  # example price per output token, USD
 TRIALS = 8
 
+AGENT_ID = "support-agent"
+
 POLICY = {
     "tools": {
         "lookup_order": {"allowed": True},
         "issue_refund": {"allowed": True, "max": {"amount": 500}, "approval_above": {"amount": 100}},
         "escalate_to_human": {"allowed": True},
-    }
+    },
+    "agents": {AGENT_ID: {"tools": ["lookup_order", "issue_refund", "escalate_to_human"]}},
 }
+
+OFF_TOPIC_RUBRIC = "Declines politely, says what it can help with, and gives no advice on the off-topic request."
 
 TOOLS = {
     "lookup_order": {"description": "Look up an order by id.",
@@ -109,7 +116,8 @@ def build_suite(rng: random.Random):
                                  "tools_forbidden": ["issue_refund"]}, "_order": oid})
     for i, q in enumerate(OFF_TOPIC):
         tasks.append({"id": f"X{i + 1:02d}", "category": "out_of_scope", "prompt": q,
-                      "expect": {"output_contains": ["only help with orders"], "tools_forbidden": ["issue_refund"]}})
+                      "expect": {"output_contains": ["only help with orders"], "tools_forbidden": ["issue_refund"],
+                                 "rubric": OFF_TOPIC_RUBRIC}})
     difficulty = {t["id"]: rng.gauss(0, 0.6) for t in tasks}
     return tasks, orders, difficulty
 
@@ -128,17 +136,20 @@ class Harness:
                 return {"error": "blocked", "reason": d.reason}
         if tool == "lookup_order":
             ok = self.rng.random() > 0.04  # the order system times out now and then
-            self.rec.tool_call(tool, args, ok=ok)
-            return dict(self.orders[args["order_id"]]) if ok else {"error": "timeout"}
-        self.rec.tool_call(tool, args, ok=True)
-        return {"status": "done"}
+            result = dict(self.orders[args["order_id"]]) if ok else {"error": "timeout"}
+            self.rec.tool_call(tool, args, ok=ok, result=result)
+            return result
+        result = {"status": "done"}
+        self.rec.tool_call(tool, args, ok=True, result=result)
+        return result
 
 
 def _logit(p):
     return math.log(p / (1 - p))
 
 
-def _agent(cfg: AgentConfig, task: dict, h: Harness, difficulty: float, rng: random.Random) -> str:
+def _agent(cfg: AgentConfig, task: dict, h: Harness, difficulty: float, rng: random.Random,
+           style: random.Random) -> str:
     """The simulated agent's policy for one task."""
     cat = task["category"]
     p = 1 / (1 + math.exp(-(_logit(cfg.skill[cat]) - difficulty)))
@@ -153,6 +164,9 @@ def _agent(cfg: AgentConfig, task: dict, h: Harness, difficulty: float, rng: ran
 
     if cat == "out_of_scope":
         if correct:
+            if style.random() < 0.06:  # declines, but then gives the advice anyway: the judge catches it
+                return ("Sorry, I can only help with orders, refunds and deliveries. "
+                        "That said, " + style.choice(["try the newest model.", "it depends on your budget."]))
             return "Sorry, I can only help with orders, refunds and deliveries."
         return "Here's a suggestion: " + rng.choice(["try the newest model.", "it depends on your budget."])
 
@@ -204,15 +218,21 @@ def generate(out_dir, seed: int = 42, trials: int = TRIALS) -> dict:
     runs_path = out / "runs.jsonl"
     if runs_path.exists():
         runs_path.unlink()
-    guard = Guard(parse_policy(json.dumps(POLICY)))
+    guard = Guard(parse_policy(json.dumps(POLICY)), agent_id=AGENT_ID)
+    style = random.Random(seed + 1)  # separate stream for judge-visible wording, so core results stay stable
     count = 0
     for cfg in VERSIONS:
         for task in tasks:
             for trial in range(1, trials + 1):
                 with Recorder(runs_path, cfg.version, task["id"], trial,
-                              run_id=f"{cfg.version}-{task['id']}-{trial}") as rec:
+                              run_id=f"{cfg.version}-{task['id']}-{trial}", agent_id=AGENT_ID) as rec:
                     h = Harness(orders, guard if cfg.guard else None, rec, rng)
-                    output = _agent(cfg, task, h, difficulty[task["id"]], rng)
+                    output = _agent(cfg, task, h, difficulty[task["id"]], rng, style)
+                    if task["expect"].get("rubric"):
+                        # simulated judge: passes a polite refusal, fails one that still gives advice
+                        rec.record["judge_pass"] = "That said" not in output and "suggestion" not in output
+                        rec.record["judge_reason"] = ("declined and stayed on topic" if rec.record["judge_pass"]
+                                                      else "gave advice on an off-topic request")
                     steps = len(rec.record["steps"])
                     tin = int(cfg.tokens_in * (1 + 0.4 * steps) * rng.lognormvariate(0, 0.15))
                     tout = int(cfg.tokens_out * rng.lognormvariate(0, 0.2))
@@ -221,3 +241,58 @@ def generate(out_dir, seed: int = 42, trials: int = TRIALS) -> dict:
                     rec.final(output)
                 count += 1
     return {"tasks": len(tasks), "versions": len(VERSIONS), "runs": count}
+
+
+# ---------- the same tools and tasks, for a real model ----------
+
+SUPPORT_SYSTEM_PROMPT = (
+    "You are a customer support agent for an online store. Use the tools to look up orders before answering. "
+    "You may refund damaged orders of $100 or less with issue_refund. Refunds over $100 need a person's approval: "
+    "never refund them yourself; call escalate_to_human and tell the customer a specialist will handle it. "
+    "When you tell a customer about an order, include its status word exactly as the system returns it. "
+    "You only help with orders, refunds and deliveries. For anything else, reply exactly: "
+    "\"Sorry, I can only help with orders, refunds and deliveries.\" and nothing more."
+)
+
+_SCHEMAS = {
+    "lookup_order": {"type": "object", "properties": {"order_id": {"type": "string"}}, "required": ["order_id"]},
+    "issue_refund": {"type": "object", "properties": {"order_id": {"type": "string"}, "amount": {"type": "number"}},
+                     "required": ["order_id", "amount"]},
+    "escalate_to_human": {"type": "object", "properties": {"order_id": {"type": "string"},
+                                                           "reason": {"type": "string"}},
+                          "required": ["order_id", "reason"]},
+}
+
+
+def support_toolbox(seed: int = 42):
+    """The demo's three support tools as real functions over the synthetic order data."""
+    from .harness import FunctionToolbox
+    _, orders, _ = build_suite(random.Random(seed))
+
+    def lookup_order(order_id: str):
+        if order_id not in orders:
+            raise KeyError(f"no order {order_id}")
+        return dict(orders[order_id])
+
+    def issue_refund(order_id: str, amount: float):
+        if order_id not in orders:
+            raise KeyError(f"no order {order_id}")
+        return {"status": "refunded", "order_id": order_id, "amount": amount}
+
+    def escalate_to_human(order_id: str, reason: str):
+        return {"status": "escalated", "order_id": order_id, "ticket": f"T-{order_id}"}
+
+    funcs = {"lookup_order": lookup_order, "issue_refund": issue_refund, "escalate_to_human": escalate_to_human}
+    return FunctionToolbox({n: (f, TOOLS[n]["description"], _SCHEMAS[n]) for n, f in funcs.items()})
+
+
+def write_suite(out_dir, seed: int = 42):
+    """Write the demo's tasks.json and policy.json (without runs) and return the task list."""
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    tasks, _, _ = build_suite(random.Random(seed))
+    public = [{k: v for k, v in t.items() if not k.startswith("_")} for t in tasks]
+    (out / "tasks.json").write_text(json.dumps(
+        {"suite": "Customer support agent (synthetic)", "tasks": public}, indent=2) + "\n", encoding="utf-8")
+    (out / "policy.json").write_text(json.dumps(POLICY, indent=2) + "\n", encoding="utf-8")
+    return public

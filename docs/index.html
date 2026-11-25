@@ -4,11 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%232b59c3%22/%3E%3C/svg%3E">
-<title>AgentMeter · Test your AI agent before it ships</title>
-<meta name="description" content="Free, open-source AI agent evaluation: task success, tool-use accuracy, policy violations, cost per success and latency, with a Ship / Hold / Block release gate for CI. Runs in your browser. By Olga Arkadieva.">
+<title>AgentMeter: AI agent evaluation and release gate (free, open source)</title>
+<meta name="description" content="Free, open-source AI agent evaluation: task success, pass^k reliability, tool use, permission violations, cost and latency, with a Ship / Hold / Block release gate for CI. Works with Claude, OpenAI and MCP tools. By Olga Arkadieva.">
+<meta name="keywords" content="AI agent evaluation, LLM evals, agent eval harness, release gate, pass^k, MCP, LLM-as-a-judge, AI guardrails, tool use, AI governance">
+<meta name="author" content="Olga Arkadieva">
 <link rel="canonical" href="https://olgarkadieva-byte.github.io/agentmeter/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="AgentMeter: test your AI agent before it ships">
+<meta property="og:site_name" content="AgentMeter">
 <meta property="og:description" content="Task success, tool use, policy violations, cost and latency for every agent version, with a Ship / Hold / Block release gate. Free and open source.">
 <meta property="og:url" content="https://olgarkadieva-byte.github.io/agentmeter/">
 <meta name="twitter:card" content="summary">
@@ -19,6 +22,10 @@
   "name": "AgentMeter",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Web browser, Python 3.10+",
+  "softwareVersion": "1.1.0",
+  "license": "https://creativecommons.org/licenses/by-nc/4.0/",
+  "keywords": "AI agent evaluation, LLM evals, eval harness, release gate, pass^k, MCP, LLM-as-a-judge, guardrails",
+  "featureList": ["Task success with 95% ranges clustered by task", "pass^k reliability", "Tool-use accuracy", "Permission policy with runtime guard, agent identities and audit log", "Cost per successful task and p95 latency", "Ship / Hold / Block release gate for CI", "Agent harness for Claude and OpenAI-compatible models", "MCP tool server and client", "Replay of recorded tool outputs", "Model judge for open-ended rubrics", "Memory on vs. off experiments"],
   "description": "Evaluates AI agents: task success with 95% ranges, pass^k reliability, tool-use accuracy, permission-policy violations, cost per successful task and latency, with a Ship / Hold / Block release gate for CI.",
   "url": "https://olgarkadieva-byte.github.io/agentmeter/",
   "codeRepository": "https://github.com/olgarkadieva-byte/agentmeter",
@@ -155,12 +162,22 @@ pre{background:var(--soft);border-radius:10px;padding:14px;overflow-x:auto;font-
 </div></section>
 
 <section><div class="wrap">
+  <h2>Works with real agents</h2>
+  <div class="steps">
+    <div class="step"><h3>Any model</h3><p>A built-in agent loop for Claude and OpenAI-compatible models, with step limits, timeouts and the permission guard on every tool call. Or record runs from your own framework.</p></div>
+    <div class="step"><h3>MCP tools</h3><p>Use the tools of any MCP server in an evaluation, or serve your tools over MCP. Each call's result is recorded, so later versions can be replayed against the same outputs.</p></div>
+    <div class="step"><h3>Open-ended answers</h3><p>Add a rubric to a task and a model judge grades each answer, with a one-sentence reason you can spot-check. Unjudged runs hold the release.</p></div>
+    <div class="step"><h3>Experiments in one command</h3><p><code>agentmeter run</code> runs a real model on the 60 demo tasks, with memory on or off, so you can measure what a change does before you ship it.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
   <h2>How the release gate decides</h2>
   <table>
     <thead><tr><th>Verdict</th><th>When</th></tr></thead>
     <tbody>
       <tr><td><span class="badge ship">Ship</span></td><td>No policy violations, success is no worse than the baseline beyond your margin, and cost per success and p95 latency stay within budget.</td></tr>
-      <tr><td><span class="badge hold">Hold</span></td><td>Cost or latency is over budget, or a meaningful drop in success can't be ruled out yet.</td></tr>
+      <tr><td><span class="badge hold">Hold</span></td><td>Cost or latency is over budget, a meaningful drop in success can't be ruled out yet, or open-ended answers haven't been judged.</td></tr>
       <tr><td><span class="badge block">Block</span></td><td>Any policy violation, or success is significantly lower than the baseline.</td></tr>
     </tbody>
   </table>

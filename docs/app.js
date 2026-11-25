@@ -3,7 +3,7 @@
 (function () {
 "use strict";
 const Z95 = 1.959963984540054;
-const FAILURE_ORDER = ["agent error", "forbidden tool called", "required tool not called", "wrong or incomplete answer"];
+const FAILURE_ORDER = ["agent error", "forbidden tool called", "required tool not called", "wrong or incomplete answer", "failed the judge's rubric"];
 
 class ContractError extends Error {}
 
@@ -40,9 +40,11 @@ function parseSuite(text, name = "tasks.json") {
     if (!exp || typeof exp !== "object" || Array.isArray(exp)) throw new ContractError(`${where}: 'expect' must be an object`);
     const cat = t.category === undefined ? "general" : t.category, prompt = t.prompt === undefined ? "" : t.prompt;
     if (typeof cat !== "string" || typeof prompt !== "string") throw new ContractError(`${where}: 'category' and 'prompt' must be strings`);
+    const rubric = exp.rubric === undefined ? "" : exp.rubric;
+    if (typeof rubric !== "string") throw new ContractError(`${where}: 'rubric' must be a string`);
     tasks.set(t.id, { id: t.id, category: cat || "general", prompt, expect: {
       output_contains: strList(exp, "output_contains", where), output_excludes: strList(exp, "output_excludes", where),
-      tools_required: strList(exp, "tools_required", where), tools_forbidden: strList(exp, "tools_forbidden", where) } });
+      tools_required: strList(exp, "tools_required", where), tools_forbidden: strList(exp, "tools_forbidden", where), rubric } });
   });
   if (!tasks.size) throw new ContractError(`${name} has no tasks`);
   return { name: typeof data.suite === "string" ? data.suite : "", tasks };
@@ -60,7 +62,17 @@ function parsePolicy(text, name = "policy.json") {
     if (typeof allowed !== "boolean") throw new ContractError(`${where}: 'allowed' must be true or false`);
     tools.set(tool, { allowed, max: numMap(r, "max", where), approval_above: numMap(r, "approval_above", where) });
   }
-  return { tools };
+  let agents = null;
+  if ("agents" in data) {
+    if (!data.agents || typeof data.agents !== "object" || Array.isArray(data.agents)) throw new ContractError(`${name}: 'agents' must be an object`);
+    agents = new Map();
+    for (const [aid, a] of Object.entries(data.agents)) {
+      const where = `${name}, agent '${aid}'`;
+      if (!a || typeof a !== "object" || Array.isArray(a)) throw new ContractError(`${where}: must be an object`);
+      agents.set(aid, strList(a, "tools", where));
+    }
+  }
+  return { tools, agents };
 }
 
 function parseStep(s, where) {
@@ -100,9 +112,13 @@ function parseRuns(text, suite, name = "runs.jsonl") {
       if (!isWhole(v)) throw new ContractError(`${where}: '${k}' must be a whole number, 0 or more`);
     const err = r.error === undefined ? null : r.error;
     if (err !== null && typeof err !== "string") throw new ContractError(`${where}: 'error' must be a string or null`);
+    const aid = r.agent_id === undefined ? null : r.agent_id, jp = r.judge_pass === undefined ? null : r.judge_pass, jr = r.judge_reason === undefined ? null : r.judge_reason;
+    if (aid !== null && (typeof aid !== "string" || !aid)) throw new ContractError(`${where}: 'agent_id' must be a non-empty string or null`);
+    if (jp !== null && typeof jp !== "boolean") throw new ContractError(`${where}: 'judge_pass' must be true, false or null`);
+    if (jr !== null && typeof jr !== "string") throw new ContractError(`${where}: 'judge_reason' must be a string or null`);
     runs.push({ run_id: r.run_id, agent_version: r.agent_version, task_id: r.task_id, trial,
       steps: steps.map(s => parseStep(s, where)), output, cost_usd: r.cost_usd, latency_s: r.latency_s,
-      tokens_in: tin, tokens_out: tout, error: err || null });
+      tokens_in: tin, tokens_out: tout, error: err || null, agent_id: aid, judge_pass: jp, judge_reason: jr });
   });
   if (unknown.size) {
     const [tid, ln] = unknown.entries().next().value;
@@ -115,8 +131,13 @@ function parseRuns(text, suite, name = "runs.jsonl") {
 
 // ---------- policy ----------
 const fmtArg = v => String(v);
-function check(policy, tool, args, approvedBy) {
+function check(policy, tool, args, approvedBy, agentId = null) {
   if (!policy) return { kind: "unchecked", reason: "" };
+  if (agentId !== null && policy.agents) {
+    const scope = policy.agents.get(agentId);
+    if (!scope) return { kind: "violation", reason: `${tool}: agent '${agentId}' is not in the policy` };
+    if (!scope.includes(tool)) return { kind: "violation", reason: `${tool}: agent '${agentId}' is not permitted to use this tool` };
+  }
   const rule = policy.tools.get(tool);
   if (!rule) return { kind: "violation", reason: `${tool}: tool is not in the policy` };
   if (!rule.allowed) return { kind: "violation", reason: `${tool}: tool is not allowed` };
@@ -135,8 +156,8 @@ function check(policy, tool, args, approvedBy) {
   }
   return { kind: "allowed", reason: "" };
 }
-function checkStep(policy, s) {
-  const d = check(policy, s.tool, s.args, s.approved_by);
+function checkStep(policy, s, agentId = null) {
+  const d = check(policy, s.tool, s.args, s.approved_by, agentId);
   if (s.blocked) return { kind: "blocked", reason: d.reason || `${s.tool}: stopped by the runtime guard` };
   return d;
 }
@@ -149,10 +170,11 @@ function gradeRun(run, suite, policy) {
   const succeeded = new Set(executed.filter(s => s.ok).map(s => s.tool)), called = new Set(executed.map(s => s.tool));
   const missing = exp.tools_required.filter(t => !succeeded.has(t)), forbidden = exp.tools_forbidden.filter(t => called.has(t));
   const toolsOk = !missing.length && !forbidden.length;
-  const failure = run.error ? "agent error" : forbidden.length ? "forbidden tool called" : missing.length ? "required tool not called" : !answerOk ? "wrong or incomplete answer" : null;
+  const failure = run.error ? "agent error" : forbidden.length ? "forbidden tool called" : missing.length ? "required tool not called" : !answerOk ? "wrong or incomplete answer" : (exp.rubric && run.judge_pass === false) ? "failed the judge's rubric" : null;
   const violations = [];
-  for (const s of run.steps) { const d = checkStep(policy, s); if (d.kind === "violation") violations.push(d.reason); }
-  return { run, success: failure === null, failure, toolsOk, violations, toolCalls: executed.length, toolErrors: executed.filter(s => !s.ok).length };
+  for (const s of run.steps) { const d = checkStep(policy, s, run.agent_id); if (d.kind === "violation") violations.push(d.reason); }
+  return { run, success: failure === null, failure, toolsOk, violations, toolCalls: executed.length, toolErrors: executed.filter(s => !s.ok).length,
+    unjudged: Boolean(exp.rubric) && run.judge_pass === null };
 }
 const sum = xs => { let t = 0; for (const x of xs) t += x; return t; };
 const mean = xs => sum(xs) / xs.length;
@@ -204,6 +226,7 @@ function scoreVersion(version, grades, suite) {
     violations: viol.length, violation_run_share: gs.filter(g => g.violations.length).length / gs.length,
     violation_examples: examples,
     blocked_calls: sum(gs.map(g => g.run.steps.filter(s => s.blocked).length)),
+    unjudged_runs: gs.filter(g => g.unjudged).length,
     cost_per_run: totalCost / gs.length, cost_per_success: successes ? totalCost / successes : null, total_cost: totalCost,
     tokens_in: sum(gs.map(g => g.run.tokens_in)), tokens_out: sum(gs.map(g => g.run.tokens_out)),
     latency_p50: percentile(lat, 0.5), latency_p95: percentile(lat, 0.95),
@@ -243,6 +266,8 @@ function gate(base, cand, t = DEFAULTS) {
   if (cand.cost_per_success === null) block.push("No run succeeded.");
   else if (costChange !== null && costChange > t.max_cost_increase)
     hold.push(`Cost per successful run is up ${(costChange * 100).toFixed(0)}% ($${base.cost_per_success.toFixed(4)} to $${cand.cost_per_success.toFixed(4)}), over the ${g6(t.max_cost_increase * 100)}% budget.`);
+  if (cand.unjudged_runs)
+    hold.push(`${cand.unjudged_runs} run${cand.unjudged_runs !== 1 ? "s" : ""} with a rubric ${cand.unjudged_runs !== 1 ? "have" : "has"} no judge verdict yet; run agentmeter judge first.`);
   if (latencyChange !== null && latencyChange > t.max_latency_increase)
     hold.push(`p95 latency is up ${(latencyChange * 100).toFixed(0)}% (${base.latency_p95.toFixed(1)}s to ${cand.latency_p95.toFixed(1)}s), over the ${g6(t.max_latency_increase * 100)}% budget.`);
   let verdict, reasons;

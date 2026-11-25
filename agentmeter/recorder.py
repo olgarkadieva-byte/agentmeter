@@ -21,7 +21,8 @@ from pathlib import Path
 
 
 class Recorder:
-    def __init__(self, path, agent_version: str, task_id: str, trial: int = 1, run_id: str | None = None):
+    def __init__(self, path, agent_version: str, task_id: str, trial: int = 1, run_id: str | None = None,
+                 agent_id: str | None = None):
         self.path = Path(path)
         self.record = {
             "run_id": run_id or uuid.uuid4().hex[:12],
@@ -35,6 +36,8 @@ class Recorder:
             "cost_usd": 0.0,
             "latency_s": 0.0,
         }
+        if agent_id:
+            self.record["agent_id"] = agent_id
         self._latency_given = False
 
     def __enter__(self):
@@ -42,12 +45,14 @@ class Recorder:
         return self
 
     def tool_call(self, tool: str, args: dict | None = None, ok: bool = True,
-                  approved_by: str | None = None, blocked: bool = False):
+                  approved_by: str | None = None, blocked: bool = False, result=None):
         step = {"tool": tool, "args": args or {}, "ok": ok}
         if approved_by:
             step["approved_by"] = approved_by
         if blocked:
             step["blocked"] = True
+        if result is not None:
+            step["result"] = result  # kept so the run can be replayed later
         self.record["steps"].append(step)
 
     def usage(self, tokens_in: int = 0, tokens_out: int = 0, cost_usd: float = 0.0,

@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentmeter"
-version = "1.0.0"
+version = "1.1.0"
 description = "Evaluate AI agents before they ship: task success, tool use, policy violations, cost and latency, with a Ship / Hold / Block release gate."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "CC-BY-NC-4.0" }
 authors = [{ name = "Olga Arkadieva" }]
-keywords = ["AI agents", "agent evaluation", "LLM evals", "AI governance", "release gate", "tool use", "guardrails"]
+keywords = ["AI agents", "agent evaluation", "LLM evals", "eval harness", "MCP", "LLM-as-a-judge", "AI governance", "release gate", "tool use", "guardrails"]
 
 [project.scripts]
 agentmeter = "agentmeter.__main__:main"

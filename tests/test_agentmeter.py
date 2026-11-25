@@ -177,7 +177,7 @@ def test_sample_verdicts(sample_scores):
     assert gate(s["v1.0"], s["v1.2"]).verdict == "ship"
     held = gate(s["v1.0"], s["v1.2+memory"])
     assert held.verdict == "hold" and held.reasons[0].startswith("p95 latency is up 37%")
-    assert gate(s["v1.2"], s["v1.2+memory"]).reasons[0].startswith("Cost per successful run is up 25%")
+    assert gate(s["v1.2"], s["v1.2+memory"]).reasons[0].startswith("Cost per successful run is up 23%")
 
 
 def test_thresholds_change_the_verdict(sample_scores):

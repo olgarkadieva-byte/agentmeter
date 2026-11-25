@@ -44,6 +44,51 @@ def _add_thresholds(p):
                    help="largest increase in p95 latency, in percent (default 25)")
 
 
+def _add_model(p):
+    p.add_argument("--provider", choices=["anthropic", "openai"], required=True)
+    p.add_argument("--model", required=True, help="model name, as your provider spells it")
+    p.add_argument("--base-url", help="OpenAI-compatible endpoint (openai provider only)")
+    p.add_argument("--price-in", type=float, default=0.0, metavar="USD", help="price per million input tokens")
+    p.add_argument("--price-out", type=float, default=0.0, metavar="USD", help="price per million output tokens")
+
+
+def _model(a):
+    from .harness import AnthropicModel, OpenAIModel
+    if a.provider == "anthropic":
+        return AnthropicModel(a.model, price_in_per_mtok=a.price_in, price_out_per_mtok=a.price_out)
+    kw = {"base_url": a.base_url} if a.base_url else {}
+    return OpenAIModel(a.model, price_in_per_mtok=a.price_in, price_out_per_mtok=a.price_out, **kw)
+
+
+def _live(a) -> int:
+    import json as _json
+    from .contract import parse_policy
+    from .demo import AGENT_ID, POLICY, SUPPORT_SYSTEM_PROMPT, support_toolbox, write_suite
+    from .harness import MemoryToolbox, run_suite
+    from .mcp import MCPToolbox
+    from .policy import Guard
+    model = _model(a)
+    out = Path(a.out)
+    tasks = write_suite(out)[: a.limit] if a.limit else write_suite(out)
+    tools = MCPToolbox([sys.executable, "-m", "agentmeter.mcp"]) if a.via_mcp else support_toolbox()
+    if a.memory:
+        tools = MemoryToolbox(tools, out / f"memory-{a.version}.json")
+    guard = None if a.no_guard else Guard(parse_policy(_json.dumps(POLICY)), agent_id=AGENT_ID)
+    print(f"Running {a.model} as '{a.version}' on {len(tasks)} tasks x {a.trials} trials"
+          f"{' with memory' if a.memory else ''}{' via MCP' if a.via_mcp else ''}...")
+    try:
+        info = run_suite(model, tools, tasks, out / "runs.jsonl", a.version, a.trials, guard,
+                         SUPPORT_SYSTEM_PROMPT, AGENT_ID, a.max_steps,
+                         progress=lambda m: print("  " + m) if "trial" in m else None)
+    finally:
+        inner = getattr(tools, "inner", tools)
+        if hasattr(inner, "close"):
+            inner.close()
+    print(f"Done: {info['runs']} runs, {info['errors']} with errors. Next: agentmeter judge {out} "
+          f"--provider {a.provider} --model {a.model}, then agentmeter score {out}")
+    return 0
+
+
 def _check_version(name, scores):
     names = [s.version for s in scores]
     if name not in names:
@@ -85,6 +130,24 @@ def main(argv=None) -> int:
     p.add_argument("out_dir", nargs="?", default="data")
     p.add_argument("--seed", type=int, default=42)
 
+    p = sub.add_parser("run", help="run a real model as the support agent on the demo task suite")
+    _add_model(p)
+    p.add_argument("--version", required=True, help="label for this agent version, e.g. baseline or with-memory")
+    p.add_argument("--out", default="live", help="folder for runs.jsonl, tasks.json and policy.json (default live)")
+    p.add_argument("--trials", type=int, default=3, help="attempts per task (default 3)")
+    p.add_argument("--limit", type=int, help="run only the first N tasks, for a quick test")
+    p.add_argument("--memory", action="store_true", help="give the agent save_note / search_notes tools that persist across runs")
+    p.add_argument("--via-mcp", action="store_true", help="serve the tools from an MCP server subprocess")
+    p.add_argument("--no-guard", action="store_true", help="turn off the runtime permission guard")
+    p.add_argument("--max-steps", type=int, default=8)
+
+    p = sub.add_parser("judge", help="grade open-ended answers against each task's rubric with a model")
+    _add_inputs(p)
+    _add_model(p)
+    p.add_argument("--redo", action="store_true", help="judge again runs that already have a verdict")
+
+    sub.add_parser("mcp-server", help="serve the demo support tools as an MCP server over stdio")
+
     a = ap.parse_args(argv)
     try:
         return _run(a)
@@ -98,12 +161,30 @@ def main(argv=None) -> int:
     except FileNotFoundError as e:
         print(f"error: file not found: {e.filename or e}", file=sys.stderr)
         return 2
-    except (ContractError, ValueError) as e:
+    except (ContractError, ValueError, RuntimeError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
 
 def _run(a) -> int:
+    if a.cmd == "mcp-server":
+        from .demo import support_toolbox
+        from .mcp import serve
+        serve(support_toolbox(), name="agentmeter-demo-support-tools")
+        return 0
+
+    if a.cmd == "run":
+        return _live(a)
+
+    if a.cmd == "judge":
+        from .contract import _read, parse_suite, resolve_paths
+        from .judge import judge_runs
+        runs_p, tasks_p, _ = resolve_paths(a.path, a.tasks, a.policy)
+        info = judge_runs(runs_p, parse_suite(_read(tasks_p), tasks_p.name), _model(a), a.redo)
+        print(f"Judged {info['judged']} runs ({info['unparsed']} unreadable verdicts, {info['skipped']} skipped: "
+              f"no rubric or already judged).")
+        return 0
+
     if a.cmd == "demo":
         from .demo import generate
         info = generate(a.out_dir, a.seed)

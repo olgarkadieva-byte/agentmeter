@@ -15,5 +15,14 @@
     "escalate_to_human": {
       "allowed": true
     }
+  },
+  "agents": {
+    "support-agent": {
+      "tools": [
+        "lookup_order",
+        "issue_refund",
+        "escalate_to_human"
+      ]
+    }
   }
 }

@@ -35,10 +35,17 @@ def _is_num(v) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
-def check(policy: Policy | None, tool: str, args: dict, approved_by: str | None = None) -> Decision:
+def check(policy: Policy | None, tool: str, args: dict, approved_by: str | None = None,
+          agent_id: str | None = None) -> Decision:
     """Decide whether one tool call is permitted under the policy."""
     if policy is None:
         return Decision(UNCHECKED)
+    if agent_id is not None and policy.agents is not None:
+        scope = policy.agents.get(agent_id)
+        if scope is None:
+            return Decision(VIOLATION, f"{tool}: agent '{agent_id}' is not in the policy")
+        if tool not in scope:
+            return Decision(VIOLATION, f"{tool}: agent '{agent_id}' is not permitted to use this tool")
     rule = policy.tools.get(tool)
     if rule is None:
         return Decision(VIOLATION, f"{tool}: tool is not in the policy")
@@ -60,8 +67,8 @@ def check(policy: Policy | None, tool: str, args: dict, approved_by: str | None 
     return Decision(ALLOWED)
 
 
-def check_step(policy: Policy | None, step: Step) -> Decision:
-    d = check(policy, step.tool, step.args, step.approved_by)
+def check_step(policy: Policy | None, step: Step, agent_id: str | None = None) -> Decision:
+    d = check(policy, step.tool, step.args, step.approved_by, agent_id)
     if step.blocked:
         # The guard stopped it, so it never ran: record what it would have been.
         return Decision(BLOCKED, d.reason or f"{step.tool}: stopped by the runtime guard")
@@ -77,11 +84,12 @@ class Guard:
             ...  # don't run it; escalate or ask for approval instead
     """
 
-    def __init__(self, policy: Policy):
+    def __init__(self, policy: Policy, agent_id: str | None = None):
         self.policy = policy
+        self.agent_id = agent_id  # the identity this guard enforces, if the policy scopes agents
 
     def check(self, tool: str, args: dict, approved_by: str | None = None) -> Decision:
-        return check(self.policy, tool, args, approved_by)
+        return check(self.policy, tool, args, approved_by, self.agent_id)
 
 
 @dataclass(frozen=True)
@@ -101,6 +109,6 @@ def audit(runs: list[Run], policy: Policy | None) -> list[AuditEntry]:
     out = []
     for r in runs:
         for i, s in enumerate(r.steps, 1):
-            d = check_step(policy, s)
+            d = check_step(policy, s, r.agent_id)
             out.append(AuditEntry(r.run_id, r.agent_version, r.task_id, i, s.tool, s.args, d.kind, d.reason))
     return out
