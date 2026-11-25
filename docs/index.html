@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentMeter · Test your AI agent before it ships</title>
+<meta name="description" content="Free, open-source AI agent evaluation: task success, tool-use accuracy, policy violations, cost per success and latency, with a Ship / Hold / Block release gate for CI. Runs in your browser. By Olga Arkadieva.">
+<link rel="canonical" href="https://olgarkadieva-byte.github.io/agentmeter/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="AgentMeter: test your AI agent before it ships">
+<meta property="og:description" content="Task success, tool use, policy violations, cost and latency for every agent version, with a Ship / Hold / Block release gate. Free and open source.">
+<meta property="og:url" content="https://olgarkadieva-byte.github.io/agentmeter/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "AgentMeter",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Web browser, Python 3.10+",
+  "description": "Evaluates AI agents: task success with 95% ranges, pass^k reliability, tool-use accuracy, permission-policy violations, cost per successful task and latency, with a Ship / Hold / Block release gate for CI.",
+  "url": "https://olgarkadieva-byte.github.io/agentmeter/",
+  "codeRepository": "https://github.com/olgarkadieva-byte/agentmeter",
+  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+  "author": {"@type": "Person", "name": "Olga Arkadieva", "url": "https://olgarkadieva-byte.github.io/",
+             "sameAs": ["https://www.linkedin.com/in/olga-arkadieva-aigp-989677112/", "https://github.com/olgarkadieva-byte"]}
+}
+</script>
+<style>
+:root{--bg:#fbfbfc;--fg:#17181c;--muted:#5b5f6b;--line:#e2e4e9;--card:#ffffff;--soft:#f1f3f6;--accent:#2b59c3;--accent-fg:#fff;
+--ship:#1f7a4d;--ship-bg:#e3f4ea;--hold:#8a5a00;--hold-bg:#fff1d6;--block:#a32a2a;--block-bg:#fbe4e4;--naive:#8a8f9c}
+@media (prefers-color-scheme:dark){:root{--bg:#111215;--fg:#ececf0;--muted:#a1a5b1;--line:#2a2c33;--card:#181a1f;--soft:#1e2026;--accent:#8fb0ff;--accent-fg:#0d1220;
+--ship:#6fd19c;--ship-bg:#143022;--hold:#f0c060;--hold-bg:#33270c;--block:#f08a8a;--block-bg:#3a1717;--naive:#7c8190}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+header.hero{padding:64px 0 36px;border-bottom:1px solid var(--line)}
+.eyebrow{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+h1{font-size:clamp(2rem,4.6vw,3rem);line-height:1.1;letter-spacing:-.02em;margin:0 0 16px;max-width:18ch}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch;margin:0 0 26px}
+.actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+button.primary{background:var(--accent);color:var(--accent-fg);border:0;border-radius:10px;padding:13px 20px;font:inherit;font-weight:650;cursor:pointer}
+button.primary:disabled{opacity:.6;cursor:progress}
+a.secondary{padding:12px 18px;border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--fg);font-weight:600}
+.privacy{margin:18px 0 0;font-size:.92rem;color:var(--muted)}
+section{padding:36px 0;border-bottom:1px solid var(--line)}
+h2{font-size:1.35rem;margin:0 0 14px;letter-spacing:-.01em}
+.upload{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.drop{background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:16px}
+.drop label{font-weight:650;display:block;margin-bottom:4px}
+.drop small{color:var(--muted);display:block;margin-bottom:10px}
+.drop .fname{font-size:.85rem;color:var(--muted);margin-top:6px}
+#results:empty{display:none}
+#results{padding:36px 0;border-bottom:1px solid var(--line)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.tile b{display:block;font-size:1.7rem;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.tile span{color:var(--muted);font-size:.9rem}
+.verdicts{margin:14px 0 26px}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:700;font-size:.82rem;white-space:nowrap}
+.badge.ship{color:var(--ship);background:var(--ship-bg)}.badge.hold{color:var(--hold);background:var(--hold-bg)}.badge.block{color:var(--block);background:var(--block-bg)}
+.chart{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;overflow-x:auto}
+.chart svg{width:100%;min-width:520px;height:auto;display:block}
+.chart .grid{stroke:var(--line)}.chart .grid.zero{stroke:var(--muted);stroke-dasharray:3 3}
+.chart .tick,.chart .axis{fill:var(--muted);font-size:12px}.chart .label{fill:var(--fg);font-size:13px}
+.chart .ci{stroke-width:4;stroke-linecap:round;opacity:.45}
+.chart .ci.ok,.chart .dot.ok{stroke:var(--ship);fill:var(--ship)}
+.chart .ci.bad,.chart .dot.bad{stroke:var(--block);fill:var(--block)}
+.chart .naive{fill:none;stroke:var(--naive);stroke-width:2}
+.legend{color:var(--muted);font-size:.88rem;margin:8px 0 26px}
+.key{display:inline-block;vertical-align:middle;margin-right:4px}
+.dot-key{width:12px;height:12px;border-radius:50%;background:var(--fg)}
+.naive-key{width:11px;height:11px;border:2px solid var(--naive);transform:rotate(45deg)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.card h3{margin:0 0 6px;font-size:1.05rem;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.kpis b{display:block;font-size:1.2rem;font-variant-numeric:tabular-nums}
+.kpis span{display:block;color:var(--muted);font-size:.82rem;line-height:1.3}
+.kpis em{display:block;color:var(--muted);font-size:.78rem;font-style:normal}
+.naive-note{font-size:.85rem;color:var(--muted);margin:4px 0}
+.card ul{margin:8px 0 0;padding-left:18px}.card li{margin:4px 0;font-size:.93rem}
+.hint{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:14px}
+.error{background:var(--block-bg);color:var(--fg);border:1px solid var(--block);border-radius:10px;padding:14px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;counter-reset:s}
+.step{background:var(--soft);border-radius:12px;padding:16px}
+.step h3{font-size:1rem;margin:0 0 6px}.step h3::before{counter-increment:s;content:counter(s) ". ";color:var(--accent)}
+.step p{margin:0;color:var(--muted);font-size:.93rem}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em}
+code{background:var(--soft);padding:1px 6px;border-radius:5px;font-size:.88em}
+footer{padding:28px 0 48px;color:var(--muted);font-size:.9rem}
+.sub{color:var(--muted);margin:-6px 0 18px}
+.h3{font-size:1.05rem;margin:28px 0 12px}
+.card h4{margin:0 0 6px;font-size:1.05rem;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.ok-key{width:12px;height:12px;border-radius:50%;background:var(--ship)}.bad-key{width:12px;height:12px;border-radius:50%;background:var(--block);margin-left:14px}
+.scroll{overflow-x:auto}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:0 24px}
+.controls{margin-top:22px;color:var(--muted)}
+select,input[type=number]{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg)}
+input[type=number]{width:5.5em}
+.settings{display:flex;flex-wrap:wrap;gap:18px;margin-top:16px;color:var(--muted);font-size:.93rem}
+.muted{color:var(--muted)}
+#file-list{margin:10px 0 0;padding-left:18px;font-size:.9rem}
+pre{background:var(--soft);border-radius:10px;padding:14px;overflow-x:auto;font-size:.85rem;line-height:1.5}
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <p class="eyebrow">Free and open source · AgentMeter</p>
+  <h1>Test your AI agent before it ships.</h1>
+  <p class="lede">Does each new version finish more tasks, call the right tools, stay inside its permissions, and do it
+  at an acceptable cost and speed? AgentMeter scores every version and gives a release verdict:
+  <span class="badge ship">Ship</span> <span class="badge hold">Hold</span> or <span class="badge block">Block</span>.</p>
+  <div class="actions">
+    <button class="primary" id="sample">Run on synthetic sample data</button>
+    <a class="secondary" href="https://github.com/olgarkadieva-byte/agentmeter">View the code on GitHub</a>
+  </div>
+  <p class="privacy">Your data never leaves this page: all calculations run in your browser and nothing is uploaded.</p>
+</div></header>
+
+<main>
+<div class="wrap"><div id="results" aria-live="polite"></div></div>
+
+<section><div class="wrap">
+  <h2>Use your own agent runs</h2>
+  <p>Log your agent's runs in the <a href="https://github.com/olgarkadieva-byte/agentmeter/blob/main/DATA_CONTRACT.md">data contract</a>
+  format (the Python <code>Recorder</code> does it in a few lines), then choose the files below. You can select them all at once.</p>
+  <div class="upload">
+    <div class="drop"><label for="files">runs.jsonl, tasks.json and policy.json</label>
+      <small>Runs: one line per attempt at a task, with the tool calls made. Task suite: what a correct run must say and which tools it must or must not use. Policy (optional): which tools are allowed, limits, and when a person must approve.</small>
+      <input type="file" id="files" accept=".jsonl,.json,application/json" multiple>
+      <ul id="file-list"></ul></div>
+  </div>
+  <div class="settings">
+    <label>Largest success drop to tolerate <input type="number" id="t-drop" value="5" min="0" step="1"> points</label>
+    <label>Cost per success budget <input type="number" id="t-cost" value="20" min="0" step="5"> % more</label>
+    <label>p95 latency budget <input type="number" id="t-lat" value="25" min="0" step="5"> % more</label>
+    <select id="baseline" hidden aria-hidden="true"></select>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>What it measures</h2>
+  <div class="steps">
+    <div class="step"><h3>Task success, honestly</h3><p>Each run is graded against the task's expected answer and required tools. Ranges are clustered by task, because repeated tries at the same task are not independent.</p></div>
+    <div class="step"><h3>Reliability</h3><p>pass^k is the share of tasks the agent gets right on every attempt. Users notice an agent that works only some of the time.</p></div>
+    <div class="step"><h3>Permissions</h3><p>Every tool call is checked against your policy: unknown tools, hard limits, and actions that need a person's approval. The same rules can block calls at runtime.</p></div>
+    <div class="step"><h3>Cost and speed</h3><p>Cost per successful task, not per call, and p95 latency, because the slowest answers are the ones people remember.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>How the release gate decides</h2>
+  <table>
+    <thead><tr><th>Verdict</th><th>When</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge ship">Ship</span></td><td>No policy violations, success is no worse than the baseline beyond your margin, and cost per success and p95 latency stay within budget.</td></tr>
+      <tr><td><span class="badge hold">Hold</span></td><td>Cost or latency is over budget, or a meaningful drop in success can't be ruled out yet.</td></tr>
+      <tr><td><span class="badge block">Block</span></td><td>Any policy violation, or success is significantly lower than the baseline.</td></tr>
+    </tbody>
+  </table>
+  <h3 class="h3">Run it in CI</h3>
+<pre>pip install git+https://github.com/olgarkadieva-byte/agentmeter.git
+agentmeter gate eval/ --baseline prod --candidate candidate</pre>
+  <p class="muted">The command exits with 0 on Ship and 1 otherwise, so a regression fails the build. A <a href="https://github.com/olgarkadieva-byte/agentmeter/blob/main/examples/agent-gate.yml">ready-made GitHub Actions workflow</a> is in the repo.</p>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+  Built by <a href="https://olgarkadieva-byte.github.io/">Olga Arkadieva</a>, IAPP AI Governance Professional (AIGP).
+  The sample data comes from a simulated agent and is fully synthetic. Part of a free toolset with
+  <a href="https://github.com/olgarkadieva-byte/ai-impact-measurement">AI Impact Measurement</a> and the
+  <a href="https://github.com/olgarkadieva-byte/ai-governance-kit">AI Governance Kit</a>. More at <a href="https://smartailayer.com/">smartailayer.com</a>.
+</div></footer>
+<script src="app.js"></script>
+</body>
+</html>

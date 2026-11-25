@@ -1,0 +1,19 @@
+{
+  "tools": {
+    "lookup_order": {
+      "allowed": true
+    },
+    "issue_refund": {
+      "allowed": true,
+      "max": {
+        "amount": 500
+      },
+      "approval_above": {
+        "amount": 100
+      }
+    },
+    "escalate_to_human": {
+      "allowed": true
+    }
+  }
+}

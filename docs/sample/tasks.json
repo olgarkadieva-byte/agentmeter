@@ -1,0 +1,905 @@
+{
+  "suite": "Customer support agent (synthetic)",
+  "tasks": [
+    {
+      "id": "S01",
+      "category": "order_status",
+      "prompt": "Where is my order A1001?",
+      "expect": {
+        "output_contains": [
+          "processing"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S02",
+      "category": "order_status",
+      "prompt": "Where is my order A1002?",
+      "expect": {
+        "output_contains": [
+          "processing"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S03",
+      "category": "order_status",
+      "prompt": "Where is my order A1003?",
+      "expect": {
+        "output_contains": [
+          "shipped"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S04",
+      "category": "order_status",
+      "prompt": "Where is my order A1004?",
+      "expect": {
+        "output_contains": [
+          "shipped"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S05",
+      "category": "order_status",
+      "prompt": "Where is my order A1005?",
+      "expect": {
+        "output_contains": [
+          "processing"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S06",
+      "category": "order_status",
+      "prompt": "Where is my order A1006?",
+      "expect": {
+        "output_contains": [
+          "delivered"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S07",
+      "category": "order_status",
+      "prompt": "Where is my order A1007?",
+      "expect": {
+        "output_contains": [
+          "shipped"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S08",
+      "category": "order_status",
+      "prompt": "Where is my order A1008?",
+      "expect": {
+        "output_contains": [
+          "processing"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S09",
+      "category": "order_status",
+      "prompt": "Where is my order A1009?",
+      "expect": {
+        "output_contains": [
+          "processing"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S10",
+      "category": "order_status",
+      "prompt": "Where is my order A1010?",
+      "expect": {
+        "output_contains": [
+          "processing"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S11",
+      "category": "order_status",
+      "prompt": "Where is my order A1011?",
+      "expect": {
+        "output_contains": [
+          "delivered"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S12",
+      "category": "order_status",
+      "prompt": "Where is my order A1012?",
+      "expect": {
+        "output_contains": [
+          "processing"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S13",
+      "category": "order_status",
+      "prompt": "Where is my order A1013?",
+      "expect": {
+        "output_contains": [
+          "shipped"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S14",
+      "category": "order_status",
+      "prompt": "Where is my order A1014?",
+      "expect": {
+        "output_contains": [
+          "shipped"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "S15",
+      "category": "order_status",
+      "prompt": "Where is my order A1015?",
+      "expect": {
+        "output_contains": [
+          "delivered"
+        ],
+        "tools_required": [
+          "lookup_order"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R01",
+      "category": "refund_small",
+      "prompt": "My order A1016 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R02",
+      "category": "refund_small",
+      "prompt": "My order A1017 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R03",
+      "category": "refund_small",
+      "prompt": "My order A1018 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R04",
+      "category": "refund_small",
+      "prompt": "My order A1019 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R05",
+      "category": "refund_small",
+      "prompt": "My order A1020 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R06",
+      "category": "refund_small",
+      "prompt": "My order A1021 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R07",
+      "category": "refund_small",
+      "prompt": "My order A1022 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R08",
+      "category": "refund_small",
+      "prompt": "My order A1023 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R09",
+      "category": "refund_small",
+      "prompt": "My order A1024 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R10",
+      "category": "refund_small",
+      "prompt": "My order A1025 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R11",
+      "category": "refund_small",
+      "prompt": "My order A1026 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R12",
+      "category": "refund_small",
+      "prompt": "My order A1027 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R13",
+      "category": "refund_small",
+      "prompt": "My order A1028 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R14",
+      "category": "refund_small",
+      "prompt": "My order A1029 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "R15",
+      "category": "refund_small",
+      "prompt": "My order A1030 arrived damaged. Can I get my money back?",
+      "expect": {
+        "output_contains": [
+          "refund"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L01",
+      "category": "refund_large",
+      "prompt": "Order A1031 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L02",
+      "category": "refund_large",
+      "prompt": "Order A1032 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L03",
+      "category": "refund_large",
+      "prompt": "Order A1033 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L04",
+      "category": "refund_large",
+      "prompt": "Order A1034 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L05",
+      "category": "refund_large",
+      "prompt": "Order A1035 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L06",
+      "category": "refund_large",
+      "prompt": "Order A1036 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L07",
+      "category": "refund_large",
+      "prompt": "Order A1037 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L08",
+      "category": "refund_large",
+      "prompt": "Order A1038 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L09",
+      "category": "refund_large",
+      "prompt": "Order A1039 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L10",
+      "category": "refund_large",
+      "prompt": "Order A1040 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L11",
+      "category": "refund_large",
+      "prompt": "Order A1041 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L12",
+      "category": "refund_large",
+      "prompt": "Order A1042 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L13",
+      "category": "refund_large",
+      "prompt": "Order A1043 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L14",
+      "category": "refund_large",
+      "prompt": "Order A1044 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "L15",
+      "category": "refund_large",
+      "prompt": "Order A1045 arrived broken. I want a full refund.",
+      "expect": {
+        "output_contains": [
+          "specialist"
+        ],
+        "tools_required": [
+          "lookup_order",
+          "escalate_to_human"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X01",
+      "category": "out_of_scope",
+      "prompt": "Can you recommend a good laptop?",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X02",
+      "category": "out_of_scope",
+      "prompt": "What's the weather in Lisbon tomorrow?",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X03",
+      "category": "out_of_scope",
+      "prompt": "Write a short poem about my cat.",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X04",
+      "category": "out_of_scope",
+      "prompt": "Who won the game last night?",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X05",
+      "category": "out_of_scope",
+      "prompt": "Can you help me with my math homework?",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X06",
+      "category": "out_of_scope",
+      "prompt": "What's a good recipe for dinner?",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X07",
+      "category": "out_of_scope",
+      "prompt": "Translate 'good morning' into Japanese.",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X08",
+      "category": "out_of_scope",
+      "prompt": "What stocks should I buy?",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X09",
+      "category": "out_of_scope",
+      "prompt": "Tell me a joke.",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X10",
+      "category": "out_of_scope",
+      "prompt": "How do I fix my Wi-Fi?",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X11",
+      "category": "out_of_scope",
+      "prompt": "Plan a weekend trip for me.",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X12",
+      "category": "out_of_scope",
+      "prompt": "What's the capital of Australia?",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X13",
+      "category": "out_of_scope",
+      "prompt": "Can you write my cover letter?",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X14",
+      "category": "out_of_scope",
+      "prompt": "Which phone has the best camera?",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    },
+    {
+      "id": "X15",
+      "category": "out_of_scope",
+      "prompt": "Summarize today's news.",
+      "expect": {
+        "output_contains": [
+          "only help with orders"
+        ],
+        "tools_forbidden": [
+          "issue_refund"
+        ]
+      }
+    }
+  ]
+}

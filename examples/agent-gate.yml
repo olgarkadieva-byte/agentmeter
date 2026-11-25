@@ -1,0 +1,27 @@
+# Example GitHub Actions workflow: block a pull request if the agent regresses.
+# Copy to .github/workflows/agent-gate.yml in your agent's repository and adjust the eval step.
+name: agent release gate
+on: [pull_request]
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install git+https://github.com/olgarkadieva-byte/agentmeter.git
+      # Your eval: run the agent on the task suite and record runs with agentmeter.Recorder.
+      # Keep the production agent's runs in eval/runs.jsonl as version "prod", and append the
+      # pull request's runs as version "candidate".
+      - run: python eval/run_suite.py --version candidate --out eval/runs.jsonl
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+      - run: agentmeter gate eval/ --baseline prod --candidate candidate
+      - if: always()
+        run: agentmeter report eval/ -o agent-report.html
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-report
+          path: agent-report.html
